@@ -1,6 +1,7 @@
 # Smart-contract-learning
 learn how to program and use smart contracts
 
+Ask your question, and i'll try to answer
 
 
 برنامه نویسی برای قراردادهای هوشمند در بستر اتریوم
