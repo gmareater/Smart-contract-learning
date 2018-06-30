@@ -1,34 +1,36 @@
 pragma solidity ^0.4.22;
 
 contract SimpleAuction {
-    // Parameters of the auction. Times are either
-    // absolute unix timestamps (seconds since 1970-01-01)
-    // or time periods in seconds.
+
+//پارامترها برای حراجی،
+// متغیرهای زمانی از نوع مهر زمانی یونیکس هستند یا به ثانیه
     address public beneficiary;
     uint public auctionEnd;
 
-    // Current state of the auction.
+    // وضعیت فعلی حراجی.
     address public highestBidder;
     uint public highestBid;
 
-    // Allowed withdrawals of previous bids
+    // اجازه برداشت به نفر قبلی
     mapping(address => uint) pendingReturns;
 
-    // Set to true at the end, disallows any change
+    // تغییر وضعیت به پایان یافته در انتها، جلوگیری از هرگونه تغییر در وضعیت
     bool ended;
 
-    // Events that will be fired on changes.
+    // رخدادهایی که پس از هر تغییر فراخوانی میگردند
     event HighestBidIncreased(address bidder, uint amount);
     event AuctionEnded(address winner, uint amount);
 
-    // The following is a so-called natspec comment,
-    // recognizable by the three slashes.
-    // It will be shown when the user is asked to
-    // confirm a transaction.
+    //  توضیحاتی که در ادامه می آیند 
+//natspec  
+    //نامیده میشود
+    // با سه عدد اسلش شناسایی میشوند
+    // زمانی که از کاربر برای تایید تراکنش درخواست میشود
+    // بشکل متن به او نشان داده میشود
 
-    /// Create a simple auction with `_biddingTime`
-    /// seconds bidding time on behalf of the
-    /// beneficiary address `_beneficiary`.
+    /// ایجاد مدت زمان حراجی `_biddingTime`
+    /// به ثانیه و مورد تایید ذینفع به آدرس
+    /// `_beneficiary`.  
     constructor(
         uint _biddingTime,
         address _beneficiary
@@ -37,10 +39,8 @@ contract SimpleAuction {
         auctionEnd = now + _biddingTime;
     }
 
-    /// Bid on the auction with the value sent
-    /// together with this transaction.
-    /// The value will only be refunded if the
-    /// auction is not won.
+    /// ثبت درخواست برای شرکت در حراجی
+    /// در صورت عدم برنده شدن در حراجی مبلغ بازگردانده میشود
     function bid() public payable {
         // No arguments are necessary, all
         // information is already part of
@@ -50,24 +50,31 @@ contract SimpleAuction {
 
         // Revert the call if the bidding
         // period is over.
+
+
+        // نیاز به هیچگونه توافقی وجود ندارد،
+        // تمام اطلاعات مورد نیاز جزوی از تراکنش می باشد
+
+        // بازگرداندن پس از پایان حراجی 
         require(
             now <= auctionEnd,
-            "Auction already ended."
+            "جراجی پایان یافته است."
         );
 
-        // If the bid is not higher, send the
-        // money back.
+        // اگر مبلغ ارسالی کمتر از بالاترین پیشنهاد می باشد
+        // مبلغ را بازگردان
         require(
             msg.value > highestBid,
-            "There already is a higher bid."
+            "مبلغ بیشتری از شما پیشنهاد شده است"
         );
 
         if (highestBid != 0) {
-            // Sending back the money by simply using
-            // highestBidder.send(highestBid) is a security risk
-            // because it could execute an untrusted contract.
-            // It is always safer to let the recipients
-            // withdraw their money themselves.
+            // بازگرداندن مبلغ به شکل خودکار به آخرین نفر با دستور زیر
+            // highestBidder.send(highestBid)  
+            // دارای ریسک امنیتی می باشد
+            // به این علت که امکان دارد، قرارداد نا امن دیگری را فراخوانی کند
+            // بطور کلی امن تر است اگر اجازه داده شود، افراد خود
+            // درخواست بازگرداندن مبلغ را کنند
             pendingReturns[highestBidder] += highestBid;
         }
         highestBidder = msg.sender;
@@ -75,17 +82,17 @@ contract SimpleAuction {
         emit HighestBidIncreased(msg.sender, msg.value);
     }
 
-    /// Withdraw a bid that was overbid.
+    /// بازگرداندن مبلغی که تایید نشده است.
     function withdraw() public returns (bool) {
         uint amount = pendingReturns[msg.sender];
         if (amount > 0) {
-            // It is important to set this to zero because the recipient
-            // can call this function again as part of the receiving call
-            // before `send` returns.
+            // بسیار مهمه که با صفر مقدار دهی شود
+            // به این دلیل که درخواست کننده می تواند این تابع را پیش
+            // از تکمیل تابع ارسال فراخوانی کند
+            // و دوبار یا چند بار درخواست برداشت مبلغ کند
             pendingReturns[msg.sender] = 0;
 
             if (!msg.sender.send(amount)) {
-                // No need to call throw here, just reset the amount owing
                 pendingReturns[msg.sender] = amount;
                 return false;
             }
@@ -93,31 +100,35 @@ contract SimpleAuction {
         return true;
     }
 
-    /// End the auction and send the highest bid
-    /// to the beneficiary.
+    /// پایان دادن به حراجی و ارسال مبلغ به ذینفع
     function auctionEnd() public {
         // It is a good guideline to structure functions that interact
+        // It is a good guideline to structure functions that interact
+        // It is a good guideline to structure functions that interact
+
+        // It is a good guideline to structure functions that interact
         // with other contracts (i.e. they call functions or send Ether)
-        // into three phases:
-        // 1. checking conditions
-        // 2. performing actions (potentially changing conditions)
-        // 3. interacting with other contracts
-        // If these phases are mixed up, the other contract could call
-        // back into the current contract and modify the state or cause
-        // effects (ether payout) to be performed multiple times.
-        // If functions called internally include interaction with external
-        // contracts, they also have to be considered interaction with
-        // external contracts.
+        // به سه فاز بشکل زیر:
+        // 1. توابع کنترلی  - checking conditions
+        // 2. عملیات اجرایی  - performing actions 
+        // (به احتمال زیاد شرایط را تغییر میدند)
+        // 3. تعامل با دیگر قراردادها
+        // اگر این فازها با یکدیگر ترکیب (قاطعی) شوند
+        // دیگر قراردادهای می توانند با فراخوانی توابع وضعیت درونی
+        // قرارداد را تغییر دهند و منجر به پرداخت چندباره مبالغ شوند
+         // اگر توابعی که بشکل درونی فراخوانی میشوند، با قراردادهای خارجی
+        // تعامل دارند نیز بایستی در فاز تعامل قرار بگیرند
+        // و به صرف اینکه از خارج دسترسی ندارند کفایت نمی کند
 
-        // 1. Conditions
-        require(now >= auctionEnd, "Auction not yet ended.");
-        require(!ended, "auctionEnd has already been called.");
+        // 1. شرطها
+        require(now >= auctionEnd, "جراجی کماکان فعال است.");
+        require(!ended, "تابع پایان حراجی پیش از این فراخوانی شده است.");
 
-        // 2. Effects
+        // 2. تاثیرات
         ended = true;
         emit AuctionEnded(highestBidder, highestBid);
 
-        // 3. Interaction
+        // 3. تعاملات
         beneficiary.transfer(highestBid);
     }
 }
